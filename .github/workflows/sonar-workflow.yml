@@ -12,7 +12,7 @@ jobs:
         distribution: 'zulu'
         cache: maven
     - name: Build with Maven cloud
-      run:  mvn -B verify sonar:sonar -Dsonar.projectKey=bd4ca8e62a42d800f28c895627ec2873f047d2dc -Dsonar.organization=omkardwd -Dsonar.host.url=https://sonarcloud.io -Dsonar.token=$SONAR_TOKEN
+      run:  mvn -B verify sonar:sonar -Dsonar.projectKey=c84d627cc1b3b8d3d6acd804525821da118438d9 -Dsonar.organization=omkardwd -Dsonar.host.url=https://sonarcloud.io -Dsonar.token=$SONAR_TOKEN
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
