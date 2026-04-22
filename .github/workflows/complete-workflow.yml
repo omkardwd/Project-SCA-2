@@ -32,7 +32,7 @@ jobs:
       - name: Build + Sonar Scan
         run: |
           mvn -B clean verify sonar:sonar \
-            -Dsonar.projectKey=bd4ca8e62a42d800f28c895627ec2873f047d2dc \
+            -Dsonar.projectKey=c84d627cc1b3b8d3d6acd804525821da118438d9 \
             -Dsonar.organization=omkardwd \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.token=${{ secrets.SONAR_TOKEN }}
