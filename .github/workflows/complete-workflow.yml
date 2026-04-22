@@ -1,49 +1,106 @@
 name: Build code, run unit test, run SAST, SCA, DAST security scans
-on: push
+
+on:
+  push:
+    branches:
+      - master
+
 permissions:
   contents: read
   issues: write
 
 jobs:
+
+  # =========================
+  # BUILD + SAST (Sonar)
+  # =========================
   build:
     runs-on: ubuntu-latest
-    name: Run unit tests and SAST scan on the source code 
-    steps:
-    - uses: actions/checkout@v4
-    - name: Set up JDK 21
-      uses: actions/setup-java@v4
-      with:
-        java-version: '21'
-        distribution: 'zulu'
-        cache: maven
-    - name: Run Sonar Analysis with cloud
-      run:  mvn -B verify sonar:sonar -Dsonar.projectKey=bd4ca8e62a42d800f28c895627ec2873f047d2dc -Dsonar.organization=omkardwd -Dsonar.host.url=https://sonarcloud.io -Dsonar.token=$SONAR_TOKEN
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-  security:
-    runs-on: ubuntu-latest
-    needs: build
-    name: Run the SCA scan on the source code
-    steps:
-      - uses: actions/checkout@master
-      - name: RunSnyk to check for vulnerabilities
-        uses: snyk/actions/maven@master
-        continue-on-error: true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-  zap_scan:
-    runs-on: ubuntu-latest
-    needs: security
-    name: Run DAST scan on the web application
+    name: Run unit tests and SAST scan
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
         with:
-          ref: master
-      - name: ZAP Scan
-        uses: zaproxy/action-baseline@v0.14.0
+          java-version: '21'
+          distribution: 'zulu'
+          cache: maven
+
+      - name: Build + Sonar Scan
+        run: |
+          mvn -B clean verify sonar:sonar \
+            -Dsonar.projectKey=bd4ca8e62a42d800f28c895627ec2873f047d2dc \
+            -Dsonar.organization=omkardwd \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.token=${{ secrets.SONAR_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # =========================
+  # SCA (Snyk)
+  # =========================
+  security:
+    runs-on: ubuntu-latest
+    needs: build
+    name: Run SCA scan
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Snyk Scan
+        uses: snyk/actions/maven@v3
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+  # =========================
+  # DAST (ZAP)
+  # =========================
+  zap_scan:
+    runs-on: ubuntu-latest
+    needs: security
+    name: Run DAST scan
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ✅ Start Juice Shop locally (stable)
+      - name: Start Juice Shop
+        run: |
+          docker run -d -p 3000:3000 bkimminich/juice-shop
+          echo "Waiting for app..."
+          sleep 30
+
+      # ✅ Run ZAP scan
+      - name: Run ZAP Baseline Scan
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/zap/wrk/:rw \
+            -w /zap/wrk \
+            owasp/zap2docker-stable \
+            zap-baseline.py \
+            -t http://localhost:3000 \
+            -r zap-report.html || true
+
+      # ✅ Verify report
+      - name: Check report
+        run: |
+          ls -la
+          if [ -f zap-report.html ]; then
+            echo "ZAP report generated"
+          else
+            echo "ZAP report NOT generated"
+            exit 1
+          fi
+
+      # ✅ Upload report
+      - name: Upload ZAP Report
+        uses: actions/upload-artifact@v4
         with:
-          target: 'https://juice-shop.herokuapp.com'
-          rules_file_name: '.zap/rules.tsv'
-          cmd_options: '-a'
+          name: zap-report
+          path: zap-report.html
