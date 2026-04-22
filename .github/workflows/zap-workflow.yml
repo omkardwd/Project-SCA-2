@@ -15,11 +15,16 @@ jobs:
 
       - name: ZAP Baseline Scan
         run: |
-          docker run -t owasp/zap2docker-stable zap-baseline.py \
+          docker run -t \
+            -v $(pwd):/zap/wrk/:rw \
+            owasp/zap2docker-stable zap-baseline.py \
             -t https://juice-shop.herokuapp.com \
             -r zap-report.html \
             --exit-code-on-fail 0
         continue-on-error: true
+
+      - name: Verify report exists
+        run: ls -l
 
       - name: Upload ZAP Report
         uses: actions/upload-artifact@v4
