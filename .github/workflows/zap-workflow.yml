@@ -3,7 +3,7 @@ name: ZAP Website Scan
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   zap-scan:
