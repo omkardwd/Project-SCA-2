@@ -21,7 +21,7 @@ jobs:
             -w /zap/wrk \
             zaproxy/zap-stable \
             zap-baseline.py \
-            -t https://juice-shop.herokuapp.com \
+            -t https://www.vulnhub.com \
             -r zap-report.html \
             --exit-code-on-fail 0 || true
 
